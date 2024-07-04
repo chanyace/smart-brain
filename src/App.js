@@ -3,6 +3,7 @@ import React, { Component, useState, useEffect, useMemo } from 'react';
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim"; // if you are going to use `loadSlim`, install the "@tsparticles/slim" package too
 //import ParticlesBg from 'particles-bg'
+import Clarifai from 'clarifai'; 
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import Navigation from './components/Navigation/Navigation';
 import Signin from './components/Signin/Signin';
@@ -12,60 +13,51 @@ import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import Rank from './components/Rank/Rank';
 import './App.css';
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // In this section, we set the user authentication, user and app ID, model details, and the URL
-    // of the image we want as an input. Change these strings to run your own example.
-    //////////////////////////////////////////////////////////////////////////////////////////////////
+// Your PAT (Personal Access Token) can be found in the Account's Security section
+const PAT = 'de7fb236ddec4799950830190b431a5e';
+// Specify the correct user_id/app_id pairings
+// Since you're making inferences outside your app's scope
+const USER_ID = 'sweetengeeoofweighty';       
+const APP_ID = 'test';
+// Change these to whatever model and image URL you want to use
+const MODEL_ID = 'face-detection';
+const MODEL_VERSION_ID = 'aa7f35c01e0642fda5cf400f543e7c40';  
 
-    // Your PAT (Personal Access Token) can be found in the Account's Security section
-    const PAT = 'de7fb236ddec4799950830190b431a5e';
-    // Specify the correct user_id/app_id pairings
-    // Since you're making inferences outside your app's scope
-    const USER_ID = 'sweetengeeoofweighty';       
-    const APP_ID = 'test';
-    // Change these to whatever model and image URL you want to use
-    const MODEL_ID = 'face-detection';
-    const MODEL_VERSION_ID = 'aa7f35c01e0642fda5cf400f543e7c40';    
-    const IMAGE_URL = 'https://samples.clarifai.com/metro-north.jpg';
+// const app = new Clarifai.App({
+//  apiKey: 'dcd4cd90962b401cb75e200c3d8f6ec6'
+// });
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // YOU DO NOT NEED TO CHANGE ANYTHING BELOW THIS LINE TO RUN THIS EXAMPLE
-    ///////////////////////////////////////////////////////////////////////////////////
+const returnClarifaiRequestOptions = (imageUrl) => {
 
-    const raw = JSON.stringify({
-        "user_app_id": {
-            "user_id": USER_ID,
-            "app_id": APP_ID
-        },
-        "inputs": [
-            {
-                "data": {
-                    "image": {
-                        "url": IMAGE_URL
-                    }
+  const IMAGE_URL = imageUrl;
+
+  const raw = JSON.stringify({
+    "user_app_id": {
+        "user_id": USER_ID,
+        "app_id": APP_ID
+    },
+    "inputs": [
+        {
+            "data": {
+                "image": {
+                    "url": IMAGE_URL
                 }
             }
-        ]
-    });
+        }
+    ]
+  });
 
-    const requestOptions = {
-      method: 'POST',
-      headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Key ' + PAT
-      },
-      body: raw
+  const requestOptions = {
+    method: 'POST',
+    headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Key ' + PAT
+    },
+    body: raw
   };
 
-  // NOTE: MODEL_VERSION_ID is optional, you can also call prediction with the MODEL_ID only
-  // https://api.clarifai.com/v2/models/{YOUR_MODEL_ID}/outputs
-  // this will default to the latest version_id
-
-  fetch("https://api.clarifai.com/v2/models/" + MODEL_ID + "/versions/" + MODEL_VERSION_ID + "/outputs", requestOptions)
-      .then(response => response.text())
-      .then(result => console.log(result))
-      .catch(error => console.log('error', error));
-
+  return requestOptions;
+};
 
 const initialState = {
   input: '',
@@ -222,19 +214,19 @@ class App extends Component {
     }
   
   onInputChange = (event) => {
-    console.log(event);
+    this.setState({input: event.target.value});
   }
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-    fetch('http://localhost:3000/imageurl', {
+      fetch('http://localhost:3000/imageurl', {
         method: 'post',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           input: this.state.input
         })
       })
-      app.models.predict('face-detection', this.state.input)
+      .then(response => response.json())
       .then(response => {
         if (response) {
           fetch('http://localhost:3000/image', {
@@ -254,10 +246,8 @@ class App extends Component {
         this.displayFaceBox(this.calculateFaceLocation(response))
       })
       .catch(err => console.log(err));
-  } 
-    // console.log('click');
+  }
   
-
   onRouteChange = (route) => {
     if (route === 'signout') {
       this.setState(initialState)
